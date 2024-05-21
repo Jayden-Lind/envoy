@@ -22,9 +22,12 @@ uint32_t ThreadLocalControllerImpl::averageRps() const {
     return 0;
   }
   using std::chrono::seconds;
-  seconds secs =
-      std::max(sampling_window_, std::chrono::duration_cast<seconds>(ageOfOldestSample()));
-  return global_data_.requests / secs.count();
+  std::chrono::microseconds oldestSampleAge = ageOfOldestSample();
+  seconds secs = std::max(seconds(1), std::chrono::duration_cast<seconds>(oldestSampleAge));
+  if (secs == sampling_window_ || secs == sampling_window_ - seconds(1)) {
+    return global_data_.requests / secs.count();
+  }
+  return 0;
 }
 
 void ThreadLocalControllerImpl::maybeUpdateHistoricalData() {

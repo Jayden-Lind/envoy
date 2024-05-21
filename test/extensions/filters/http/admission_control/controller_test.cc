@@ -100,7 +100,7 @@ TEST_F(ThreadLocalControllerTest, VerifyMemoryUsage) {
   EXPECT_EQ(RequestData(3, 3), tlc_.requestCounts());
 }
 
-// Verify the average RPS is calculated properly.
+// Average RPS is 0 unless there is a sample at the end of the window
 TEST_F(ThreadLocalControllerTest, AverageRps) {
   // Sample window is 5s by default in these tests.
   constexpr auto test_window = std::chrono::seconds(5);
@@ -120,11 +120,19 @@ TEST_F(ThreadLocalControllerTest, AverageRps) {
   tlc_.recordFailure();
   tlc_.recordSuccess();
   EXPECT_EQ(5, tlc_.requestCounts().requests);
-  EXPECT_EQ(1, tlc_.averageRps());
+  EXPECT_EQ(0, tlc_.averageRps());
 
   // After enough time, the requests that are outside the window should not count towards the
   // average RPS calculation.
-  time_system_.advanceTimeWait(test_window);
+  time_system_.advanceTimeWait(std::chrono::seconds(4));
+  EXPECT_EQ(5, tlc_.requestCounts().requests);
+  EXPECT_EQ(1, tlc_.averageRps());
+
+  time_system_.advanceTimeWait(std::chrono::milliseconds(900));
+  EXPECT_EQ(5, tlc_.requestCounts().requests);
+  EXPECT_EQ(1, tlc_.averageRps());
+  // After 5.Xs since requests arrive they are now cleared
+  time_system_.advanceTimeWait(std::chrono::milliseconds(300));
   EXPECT_EQ(0, tlc_.requestCounts().requests);
   EXPECT_EQ(0, tlc_.averageRps());
 }
