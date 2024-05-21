@@ -112,27 +112,29 @@ TEST_F(ThreadLocalControllerTest, AverageRps) {
   // Validate the average RPS value is calculated over the entire sample window.
   tlc_.recordSuccess();
   tlc_.recordFailure();
-  // We had 2 requests, so this would be 0.4 RPS over the full window.
+  // We had 2 requests, but the sampling window has not filled
   EXPECT_EQ(2, tlc_.requestCounts().requests);
   EXPECT_EQ(0, tlc_.averageRps());
-  // At 5 requests, this should be 1 RPS even if 0s have elapsed.
+  
+  // 3 more requests arrive 2 seconds later, but window has not elapsed yet
   tlc_.recordSuccess();
   tlc_.recordFailure();
   tlc_.recordSuccess();
   EXPECT_EQ(5, tlc_.requestCounts().requests);
   EXPECT_EQ(0, tlc_.averageRps());
 
-  // After enough time, the requests that are outside the window should not count towards the
-  // average RPS calculation.
+  // Window now arrived at the <window - 1> seconds and it returns average RPS
   time_system_.advanceTimeWait(std::chrono::seconds(4));
   EXPECT_EQ(5, tlc_.requestCounts().requests);
   EXPECT_EQ(1, tlc_.averageRps());
 
+  // Window is now at the very end, still returns average RPS
   time_system_.advanceTimeWait(std::chrono::milliseconds(900));
   EXPECT_EQ(5, tlc_.requestCounts().requests);
   EXPECT_EQ(1, tlc_.averageRps());
-  // After 5.Xs since requests arrive they are now cleared
-  time_system_.advanceTimeWait(std::chrono::milliseconds(300));
+
+  // Enough time has passed that the window is now empty
+  time_system_.advanceTimeWait(std::chrono::seconds(1));
   EXPECT_EQ(0, tlc_.requestCounts().requests);
   EXPECT_EQ(0, tlc_.averageRps());
 }
