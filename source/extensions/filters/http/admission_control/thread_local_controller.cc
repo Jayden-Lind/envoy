@@ -23,9 +23,9 @@ uint32_t ThreadLocalControllerImpl::averageRps() const {
   }
   using std::chrono::seconds;
   std::chrono::microseconds oldestSampleAge = ageOfOldestSample();
-  seconds secs = std::max(seconds(1), std::chrono::duration_cast<seconds>(oldestSampleAge));
-  if (secs == sampling_window_ || secs == sampling_window_ - seconds(1)) {
-    return global_data_.requests / secs.count();
+  seconds ageOfOldest = std::chrono::duration_cast<seconds>(oldestSampleAge);
+  if (ageOfOldest >= sampling_window_ - seconds(1)) {
+    return global_data_.requests / ageOfOldest.count();
   }
   return 0;
 }
